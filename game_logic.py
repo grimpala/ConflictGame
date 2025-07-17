@@ -36,28 +36,32 @@ class Player:
         elif self.strategy_profile == StrategyProfile.ALWAYS_DEFECT:
             return Action.DEFECT
         elif self.strategy_profile == StrategyProfile.TIT_FOR_TAT:
-            if len(history) == 0:
-                return Action.COOPERATE
-            opponent_last_action = history[-1][1 - self.player_id]
-            return Action.DEFECT if opponent_last_action == Action.DEFECT else Action.COOPERATE
+            if len(history) > 0:
+                opponent_player_id = PlayerId.PLAYER_TWO if self.player_id == PlayerId.PLAYER_ONE else PlayerId.PLAYER_ONE
+                opponent_last_action = history.get_action_at(-1, opponent_player_id)
+                return Action.DEFECT if opponent_last_action == Action.DEFECT else Action.COOPERATE
+            return Action.COOPERATE
         return Action.COOPERATE
-
 class GameHistory:
     def __init__(self):
         self.history = []
+    def __len__(self):
+        return len(self.history)
     def append_history(self, player1_reward, player2_reward, player1_action, player2_action):
         prev_score_1, prev_score_2 = 0, 0
         if len(self.history) > 0:
             prev_score_1 += self.get_score_at(-1, PlayerId.PLAYER_ONE)
             prev_score_2 += self.get_score_at(-1, PlayerId.PLAYER_TWO)
-        data = {PlayerId.PLAYER_ONE: {
-            "reward": player1_reward + prev_score_1,
-            "action": player1_action,
-        },
-        PlayerId.PLAYER_TWO: {
-            "reward": player2_reward + prev_score_2,
-            "action": player2_action,
-        }}
+        data = {
+            PlayerId.PLAYER_ONE: {
+                "reward": player1_reward + prev_score_1,
+                "action": player1_action,
+            },
+            PlayerId.PLAYER_TWO: {
+                "reward": player2_reward + prev_score_2,
+                "action": player2_action,
+            }
+        }
         self.history.append(data)
     def get_raw_history(self):
         return self.history
@@ -84,10 +88,18 @@ class Game:
     def get_history(self):
         return self.history
     def __str__(self):
-        s = ""
+        s = "\n" + "="*96 + "\n"
+        s += f"PLAYER1_STRATEGY={self.player1.strategy_profile.name}, PLAYER2_STRATEGY={self.player2.strategy_profile.name}\n"
+        s += "="*96 + "\n"
+        s += "REWARDS:\n"
+        s += "\t   COOP \t DEFECT\n"
+        s += f"COOP\t | {list(self.rewards.AA.values())} \t| {list(self.rewards.AB.values())} |\n"
+        s += f"DEFECT\t | {list(self.rewards.AB.values())} \t| {list(self.rewards.BB.values())} |\n"
+        s += "="*96 + "\n"
         for idx, history_step in enumerate(self.history.get_raw_history()):
             s += f"t={idx}:\n"
-            s += f"\t{self.player1.name}: action: {self.history.get_action_at(idx, PlayerId.PLAYER_ONE)}, score: {self.history.get_score_at(idx, PlayerId.PLAYER_ONE)}"
-            s += f"\t{self.player2.name}: action: {self.history.get_action_at(idx, PlayerId.PLAYER_TWO)}, score: {self.history.get_score_at(idx, PlayerId.PLAYER_TWO)}"
-            s += "\n"
+            s += f"\t{self.player1.name}:\n"
+            s += f"\t\taction: {self.history.get_action_at(idx, PlayerId.PLAYER_ONE).name}, score: {self.history.get_score_at(idx, PlayerId.PLAYER_ONE)}\n"
+            s += f"\t{self.player2.name}:\n"
+            s += f"\t\taction: {self.history.get_action_at(idx, PlayerId.PLAYER_TWO).name}, score: {self.history.get_score_at(idx, PlayerId.PLAYER_TWO)}\n"
         return s
