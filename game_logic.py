@@ -1,9 +1,13 @@
 from enum import Enum
+import random
 
 class StrategyProfile(Enum):
+    RANDOM = 0
     ALWAYS_COOPERATE = 1
     ALWAYS_DEFECT = 2
     TIT_FOR_TAT = 3
+    TIT_FOR_TWO_TATS = 4
+    GRIM_TRIGGER = 5
 
 class Action(Enum):
     COOPERATE = 1
@@ -14,15 +18,18 @@ class PlayerId(Enum):
     PLAYER_TWO = 2
 
 class Rewards:
-    def __init__(self, AA, AB, BB):
+    def __init__(self, AA, AB, BA, BB):
         self.AA = AA
         self.AB = AB
+        self.BA = BA
         self.BB = BB
     def player_rewards(self, player1_action, player2_action, player_id):
         if player1_action == Action.COOPERATE and player2_action == Action.COOPERATE:
             return self.AA[player_id]
-        elif player1_action != player2_action:
+        elif player1_action == Action.COOPERATE and player2_action == Action.DEFECT:
             return self.AB[player_id]
+        elif player1_action == Action.DEFECT and player2_action == Action.COOPERATE:
+            return self.BA[player_id]
         return self.BB[player_id]
 
 class Player:
@@ -31,15 +38,41 @@ class Player:
         self.player_id = player_id
         self.name = name
     def select_action(self, history):
+        opponent_player_id = PlayerId.PLAYER_TWO if self.player_id == PlayerId.PLAYER_ONE else PlayerId.PLAYER_ONE
+
+        # Randomly choose an action.
+        if self.strategy_profile == StrategyProfile.RANDOM:
+            return random.choice(list(Action.__members__.values()))
+        # Always cooperate.
         if self.strategy_profile == StrategyProfile.ALWAYS_COOPERATE:
             return Action.COOPERATE
+        # Always defect.
         elif self.strategy_profile == StrategyProfile.ALWAYS_DEFECT:
             return Action.DEFECT
+        # Cooperate unless the opponent defected last turn.
         elif self.strategy_profile == StrategyProfile.TIT_FOR_TAT:
             if len(history) > 0:
-                opponent_player_id = PlayerId.PLAYER_TWO if self.player_id == PlayerId.PLAYER_ONE else PlayerId.PLAYER_ONE
                 opponent_last_action = history.get_action_at(-1, opponent_player_id)
                 return Action.DEFECT if opponent_last_action == Action.DEFECT else Action.COOPERATE
+            return Action.COOPERATE
+        # If less than two moves have been played, cooperate. If the opponent has defected twice
+        # in a row, defect. Else, cooperate.
+        elif self.strategy_profile == StrategyProfile.TIT_FOR_TWO_TATS:
+            if len(history) > 1:
+                opponent_last_action = history.get_action_at(-1, opponent_player_id)
+                opponent_last_last_action = history.get_action_at(-2, opponent_player_id)
+                if opponent_last_action == Action.DEFECT and opponent_last_last_action == Action.DEFECT:
+                    return Action.DEFECT
+                return Action.COOPERATE
+            return Action.COOPERATE
+        # Cooperates in the first round. Once the opponent defects, will defect forever.
+        elif self.strategy_profile == StrategyProfile.GRIM_TRIGGER:
+            if len(history) == 0:
+                return Action.COOPERATE
+            opponent_last_action = history.get_action_at(-1, opponent_player_id)
+            self_last_action = history.get_action_at(-1, self.player_id)
+            if opponent_last_action == Action.DEFECT or self_last_action == Action.DEFECT:
+                return Action.DEFECT
             return Action.COOPERATE
         return Action.COOPERATE
 class GameHistory:
