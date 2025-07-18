@@ -8,6 +8,7 @@ class StrategyProfile(Enum):
     TIT_FOR_TAT = 3
     TIT_FOR_TWO_TATS = 4
     GRIM_TRIGGER = 5
+    PAVLOV = 6
 
 class Action(Enum):
     COOPERATE = 1
@@ -33,11 +34,16 @@ class Rewards:
         return self.BB[player_id]
 
 class Player:
-    def __init__(self, player_id, name, strategy_profile):
+    def __init__(self, name="", strategy_profile=StrategyProfile.RANDOM):
         self.strategy_profile = strategy_profile
-        self.player_id = player_id
         self.name = name
-    def select_action(self, history):
+        self.player_id = None
+    def set_player_id(self, player_id):
+        self.player_id = player_id
+    def select_action(self, history, p_random_action):
+        # With probability p_random_action, choose a random action.
+        if random.random() < p_random_action:
+            return random.choice(list(Action.__members__.values()))
         opponent_player_id = PlayerId.PLAYER_TWO if self.player_id == PlayerId.PLAYER_ONE else PlayerId.PLAYER_ONE
 
         # Randomly choose an action.
@@ -73,6 +79,16 @@ class Player:
             self_last_action = history.get_action_at(-1, self.player_id)
             if opponent_last_action == Action.DEFECT or self_last_action == Action.DEFECT:
                 return Action.DEFECT
+            return Action.COOPERATE
+        elif self.strategy_profile == StrategyProfile.PAVLOV:
+            if len(history) == 0:
+                return Action.COOPERATE
+            opponent_last_action = history.get_action_at(-1, opponent_player_id)
+            self_last_action = history.get_action_at(-1, self.player_id)
+            if opponent_last_action == Action.COOPERATE:
+                return self_last_action
+            elif opponent_last_action == Action.DEFECT:
+                return Action.COOPERATE if self_last_action == Action.DEFECT else Action.DEFECT
             return Action.COOPERATE
         return Action.COOPERATE
 class GameHistory:
@@ -111,10 +127,13 @@ class Game:
         self.player1 = player1
         self.player2 = player2
         self.history = GameHistory()
-    def run_game(self, steps = 1):
+
+        self.player1.set_player_id(PlayerId.PLAYER_ONE)
+        self.player1.set_player_id(PlayerId.PLAYER_TWO)
+    def run_game(self, steps = 1, p_random_action = 0):
         for _ in range(steps):
-            player1_action = self.player1.select_action(self.history)
-            player2_action = self.player2.select_action(self.history)
+            player1_action = self.player1.select_action(self.history, p_random_action)
+            player2_action = self.player2.select_action(self.history, p_random_action)
             player1_reward = self.rewards.player_rewards(player1_action, player2_action, PlayerId.PLAYER_ONE)
             player2_reward = self.rewards.player_rewards(player1_action, player2_action, PlayerId.PLAYER_TWO)
             self.history.append_history(player1_reward, player2_reward, player1_action, player2_action)
