@@ -129,7 +129,7 @@ class Game:
         self.history = GameHistory()
 
         self.player1.set_player_id(PlayerId.PLAYER_ONE)
-        self.player1.set_player_id(PlayerId.PLAYER_TWO)
+        self.player2.set_player_id(PlayerId.PLAYER_TWO)
     def run_game(self, steps = 1, p_random_action = 0):
         for _ in range(steps):
             player1_action = self.player1.select_action(self.history, p_random_action)
