@@ -7,8 +7,9 @@ class StrategyProfile(Enum):
     ALWAYS_DEFECT = 2
     TIT_FOR_TAT = 3
     TIT_FOR_TWO_TATS = 4
-    GRIM_TRIGGER = 5
-    PAVLOV = 6
+    SUSPICIOUS_TIT_FOR_TAT = 5
+    GRIM_TRIGGER = 6
+    PAVLOV = 7
 
 class Action(Enum):
     COOPERATE = 1
@@ -71,6 +72,12 @@ class Player:
                     return Action.DEFECT
                 return Action.COOPERATE
             return Action.COOPERATE
+        # Same as TIT_FOR_TAT, but begins with DEFECT.
+        elif self.strategy_profile == StrategyProfile.SUSPICIOUS_TIT_FOR_TAT:
+            if len(history) > 0:
+                opponent_last_action = history.get_action_at(-1, opponent_player_id)
+                return Action.DEFECT if opponent_last_action == Action.DEFECT else Action.COOPERATE
+            return Action.DEFECT
         # Cooperates in the first round. Once the opponent defects, will defect forever.
         elif self.strategy_profile == StrategyProfile.GRIM_TRIGGER:
             if len(history) == 0:
